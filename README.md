@@ -44,17 +44,11 @@ more conventional.
 
 We designed the Nook print vinyl sticker & had it printed at StickerYou. The Tom
 Nook figurine is an Amiibo. We also bought a [couple of light
-bars](https://www.aliexpress.com/item/1005005989319012.html) from AliExpress,
-but it turns out that controlling them within a VM setup is subpar: even the
-motherboard's RGB controller shows up as a USB device which you can pass through
-to a guest and control via OpenRGB, it consumes a ton of CPU and isn't really
-worth the hassle. I picked up a [standalone RGB
-controller](https://www.aliexpress.com/item/1005007513322954.html) and some
-[sacrificial power
-connectors](https://www.aliexpress.com/item/1005004238442300.html) that I'll
-solder together to be powered directly off the PSU and will likely just pop the
-controller out the bottom of the case for the rare time that we actually want to
-have the RGB lighting on.
+bars](https://www.aliexpress.com/item/1005005989319012.html) from AliExpress, and
+after some failed experiments trying to control them in software, I picked up a
+[standalone RGB controller](https://www.aliexpress.com/item/1005007513322954.html)
+that is powered directly off the PSU and is stuck on the bottom of the case for
+the rare time that we actually want to have the RGB lighting on.
 
 ### BIOS
 
@@ -110,8 +104,8 @@ you can figure it out):
 
 ### Burn In / Benchmarking
 
-* I ran four cycles of memtest86 (the version on Ubuntu's install image) which passed 100%
-* Installed a temporary Ubuntu install that I didn't feel bad about trashing
+* I ran four cycles of memtest86 (the version on Ubuntu's install image) which all passed 100%
+* Installed a temporary Ubuntu install that I didn't feel bad about trashing during benchmarking
 * Ran a handful of runs of Geekbench on the Linux host to establish baseline Linux
   benchmarks
 * Installed a scratch bare-metal Windows 11 install to establish baseline Windows benchmarks
@@ -130,7 +124,7 @@ you can figure it out):
   to explore further
 * Under full load, I tinkered with the fan curves in the BIOS to allow the fans
   to run as slowly as possible while still doing their job. The values in the
-  BIOS section above reflect this tinkering
+  BIOS section above reflect this effort
 
 # Host OS
 
@@ -237,13 +231,13 @@ machine is in powersave mode whenever the Windows VM isn't running. This
 [seems](https://forum.proxmox.com/threads/hookscript-with-post-stop-when-the-vm-was-shutdown-from-the-vm-itself.72802/)
 as if hook scripts aren't reliable if there are USB devices being passed through
 (as is the case with broffina). I could also get fancy with systemd or udev
-scripts here, but honestly can't be bothered.
+scripts here, but honestly I can't be bothered.
 
 ### TV Tweaks
 
 This enables console autologin and embiggens the console font for better use on
 a TV, and also installs CEC tools to help with turning the TV on and off. The guest OS
-installs make use of this.
+installs make use of this in their start/stop hook scripts.
 
 * Run `sudo systemctl edit getty@.service` and make the file contents be:
     ```
@@ -329,13 +323,13 @@ like so:
 * HDMI on the Nvidia card connected to HDMI 5 (set to low latency game mode). A
   [Pulse-Eight CEC
   Adapter](https://www.pulse-eight.com/p/104/usb-hdmi-cec-adapter) is connected
-  inline
+  inline to pass CEC commands
 * HDMI on the motherboard connected to HDMI 3 (for console use)
 * Wired ethernet
 
 The host OS and Linux guest OS runs 24/7, and the Windows runs on demand
 when we want to game. The `run` script that gets set up in 'Windows Guest
-Install' allows us to turn on the Windows machines by 'mashing enter a few times
+Install' allows us to turn on the Windows machines by 'mashing Control+C a few times
 and then typing r-u-n enter' on the keyboard (this actually works really well in
 practice and is super accessible for family members). CEC takes care of turning
 on the TV and switching the input, and within 30s or so you're looking at a
@@ -347,27 +341,17 @@ machine will switch back to low-power mode, ready for the next gaming session.
 ## Power consumption
 
 In low power mode (ie: when the Windows guest is not running), this setup pulls
-an average of 23-24W as measured at the wall right after boot. When the Windows
-guest is idle at the desktop it draws around 70-80W, and when at peak gaming it
-can get up to 400W or more.
+an average of 23-24W as measured at the wall, and when at peak gaming it can get
+up to 400W or more.
 
 I don't really care too much about power usage while gaming; that's a
 time-limited activity and basically par for the course. In terms of efficiency
-in low power mode, there are two loose ends that I'd love to resolve (they're
-kind of mutually exclusive):
-
-* After running and shutting down the Windows VM, low power mode jumps from
-  23-24w to around 30-31W, despite an identical set of processes and drivers.
-  I've done some pretty extensive digging on this and have isolated the issue to
-  be related to the GPU being passed through. My hunch at this point is that it's
-  related to the GPU dropping support for Latency Tolerance Reporting on the PCI
-  bus once it gets initialized by the Windows driver inside the VM
-* Nvidia recently added support for [runtime D3 power
-  saving](https://download.nvidia.com/XFree86/Linux-x86_64/545.23.06/README/dynamicpowermanagement.html),
-  but it's dependent on the BIOS exposing `_PR{0,3}` and `_PS{0,3}` ACPI methods,
-  which this motherboard does not implement. I've doctored up a version of the
-  driver with some extra logging and verified that this is in fact the limiting
-  factor
+in low power mode, there's one loose end that I'd love to resolve: Nvidia recently
+added support for [runtime D3 power saving](https://download.nvidia.com/XFree86/Linux-x86_64/545.23.06/README/dynamicpowermanagement.html),
+but it's dependent on the BIOS exposing `_PR{0,3}` and `_PS{0,3}` ACPI methods,
+which this motherboard does not implement. I've doctored up a version of the
+driver with some extra logging and verified that this is in fact the limiting
+factor
 
 ## Monitoring
 
