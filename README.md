@@ -236,7 +236,7 @@ scripts here, but honestly I can't be bothered.
 ### TV Tweaks
 
 This enables console autologin and embiggens the console font for better use on
-a TV, and also installs CEC tools to help with turning the TV on and off. The guest OS
+a TV, and also installs tools to help with turning the TV on and off. The guest OS
 installs make use of this in their start/stop hook scripts.
 
 * Run `sudo systemctl edit getty@.service` and make the file contents be:
@@ -248,7 +248,10 @@ installs make use of this in their start/stop hook scripts.
 * Set `FONTFACE="Termius"` and `FONTSIZE="16x32"` in `/etc/default/console-setup`
 * Add `consoleblank=30` to the `GRUB_CMDLINE_LINUX` argument in `/etc/default/grub`
 * `update-grub`
-* `apt install cec-utils`
+* `sudo su`
+* `cd ~`
+* `git clone git@github.com:griches/lgtvremote-cli.git`
+* `python3 /root/lgtvremote-cli/lgtvremote_cli.py scan`
 
 # Guest OS
 
@@ -268,6 +271,8 @@ installs make use of this in their start/stop hook scripts.
 * Install any missing drivers from base installer on driver CD
 * Download and install Nvidia drivers
 * Install tinyVNC as system service
+* Install the 'Dolby Access' app. Skip any trials (they're for headphones etc)
+  and enable Atmos on your HDMI output
 * Tweak install as desired
 * Add the following to `/var/lib/vz/snippets/broffina.sh` and set 755
     ```
@@ -275,11 +280,12 @@ installs make use of this in their start/stop hook scripts.
 
     if [ "$2" == "pre-start" ]
     then
-      echo "as" | /usr/bin/cec-client -o Rabble -r -s -d 1
+      python3 /root/lgtvremote-cli/lgtvremote_cli.py on
+      python3 /root/lgtvremote-cli/lgtvremote_cli.py hdmi 3 # or whatever input
       /usr/local/bin/passthrough
     elif [ "$2" == "post-stop" ]
     then
-      echo "tx 1f:36" | /usr/bin/cec-client -o Rabble -r -s -d 1
+      python3 /root/lgtvremote-cli/lgtvremote_cli.py off
       /usr/local/bin/powersave
     fi
 
@@ -317,21 +323,21 @@ installs make use of this in their start/stop hook scripts.
 
 # In operation
 
-We set this up in a cabinet next to the TV (a Vizio P65-F1) and have it wired up
+We set this up in a cabinet next to the TV (an LG OLED77B5PUA) and have it wired up
 like so:
 
-* HDMI on the Nvidia card connected to HDMI 5 (set to low latency game mode). A
-  [Pulse-Eight CEC
-  Adapter](https://www.pulse-eight.com/p/104/usb-hdmi-cec-adapter) is connected
-  inline to pass CEC commands
-* HDMI on the motherboard connected to HDMI 3 (for console use)
+* HDMI on the Nvidia card connected to any input on TV (it should auto-set to
+low latency game mode)
 * Wired ethernet
+* The TV is connected to wifi, but blocked at the router to avoid phoning home.
+    * 'IP Control' and 'Wake on LAN' need to be enabled on the TV for the above
+      hooks to work
 
 The host OS and Linux guest OS runs 24/7, and the Windows runs on demand
 when we want to game. The `run` script that gets set up in 'Windows Guest
 Install' allows us to turn on the Windows machines by 'mashing Control+C a few times
 and then typing r-u-n enter' on the keyboard (this actually works really well in
-practice and is super accessible for family members). CEC takes care of turning
+practice and is super accessible for family members). Hooks takes care of turning
 on the TV and switching the input, and within 30s or so you're looking at a
 freshly booted Windows desktop. When done, you just shut down the Windows OS
 normally. The qemu hook script doesn't seem to run reliably in this situation,
@@ -358,19 +364,6 @@ factor
 TBD. I've got some nice Grafana dashboards for this that I should talk about
 
 ## Maintenance Tasks
-
-### Fixing CEC
-
-CEC's physical address detection is super flaky and will read its physical input from the i915
-if it's plugged, even if the dongle is plugged in elsewhere (this shows up as 'reading drm' in
-the logs). This will cause errors in our setup because the Intel GPU is plugged
-in to the TV (for console access), and so cec-client will think that that's the
-port it should be using.
-
-* Get around this by temporarily disconnecting the Intel GPU and running any
-  cec-client command with `-p 5` (where 5 is the HDMI input).
-* This will save this physical address to EEPROM, which you can subsequently force by using `-r`
-* When in doubt, [cec-o-matic](https://www.cec-o-matic.com) is great
 
 ### Kernel updates
 
