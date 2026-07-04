@@ -72,6 +72,8 @@ you can figure it out):
 * Advanced / Platform Misc Configuration / CPU - Power Maangement Control
   * CPU C-states to Enabled
   * Package C State Limit to C10
+* Advanced / SA Configuration
+  * Enable VMD Controller to Disabled
 * Advanced / PCH Storage Configuration
   * Aggressive LPM Support to Enabled
 * Advanced / APM Configuration
@@ -80,6 +82,7 @@ you can figure it out):
   * Intel Dynamic Tuning Technology to Enabled
 * Advanced / Onbaord Devices Configuration
   * HD Audio to Disabled
+  * Wifi/Bluetooth to Disabled
   * When system is in working State to Stealth Mode
 * Monitor
   * CPU Temperature LED Switch to Disabled
@@ -158,8 +161,10 @@ you can figure it out):
         * `sudo pacman -S prometheus-node-exporter`
         * `sudo systemctl enable --now prometheus-node-exporter`
         * `sudo sensors-detect` (accept all the defaults)
+        * `sudo pacman -S nvme-cli`
+        * `sudo pacman -S turbostat`
     * Install docker:
-        * `sudo pacman -S docker-compose`
+        * `sudo pacman -S docker docker-compose`
         * `sudo systemctl enable --now docker`
         * `sudo usermod -aG docker $USER` (Log out and back in to get docker permissions) * In GUI:
     * Install Steam:
@@ -200,9 +205,9 @@ low latency game mode)
 
 ## Power consumption
 
-In low power mode (ie: when the display is not running), this setup pulls
-an average of 23-24W as measured at the wall, and when at peak gaming it can get
-up to 400W or more.
+In low power mode (ie: when the display is not running and the GPU is idle),
+this setup pulls around 35-40W as measured at the wall. At peak gaming it can
+get up to 400W or more.
 
 I don't really care too much about power usage while gaming; that's a
 time-limited activity and basically par for the course. In terms of efficiency
