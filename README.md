@@ -206,17 +206,128 @@ low latency game mode)
 ## Power consumption
 
 In low power mode (ie: when the display is not running and the GPU is idle),
-this setup pulls around 35-40W as measured at the wall. At peak gaming it can
+this setup pulls around 40-45W as measured at the wall. At peak gaming it can
 get up to 400W or more.
 
 I don't really care too much about power usage while gaming; that's a
-time-limited activity and basically par for the course. In terms of efficiency
-in low power mode, there's one loose end that I'd love to resolve: Nvidia recently
-added support for [runtime D3 power saving](https://download.nvidia.com/XFree86/Linux-x86_64/545.23.06/README/dynamicpowermanagement.html),
-but it's dependent on the BIOS exposing `_PR{0,3}` and `_PS{0,3}` ACPI methods,
-which this motherboard does not implement. I've doctored up a version of the
-driver with some extra logging and verified that this is in fact the limiting
-factor
+time-limited activity and basically par for the course. The far more relevant
+optimizations are around consumption when the box is idle. The theoretical
+minimum (GPU in D3cold, CPU in PC10) is probably closer to 23-24W, but achieving
+that requires a bunch of stars to align, some of which seem unsolvable. See the
+following section for the work done to date
+
+## Power management active work
+
+### Nvidia Runtime D3 (RTD3)
+
+The Nvidia driver supposedly supports runtime D3 power management, which allows
+the GPU to enter low-power states when idle. However, the fine-grained RTD3 mode
+also requires the BIOS to expose `_PR3` ACPI power resource methods on the GPU's
+PCIe device node. Rabble's motherboard doesn't provide this so the driver falls
+back to "Not supported" without intervention.
+
+The Claude-assisted fix is an ACPI SSDT override that injects the missing `_PR3`
+methods. The source is `nvidia-d3.dsl` in this repo. To rebuild the `.aml`
+binary from it:
+
+```bash
+# Install iasl if needed: sudo pacman -S acpica
+iasl -sa nvidia-d3.dsl    # produces nvidia-d3.aml
+```
+
+The `.dsl` file adds a stub `PowerResource` (PGPR) to the GPU's PCIe root port
+(`\_SB.PC00.PEG1`) and attaches it as `_PR3` on both the root port and the GPU
+endpoint (`\_SB.PC00.PEG1.PEGP`).
+
+A second SSDT, `nvidia-s0ix.dsl`, patches the Intel Platform Energy Policy
+device (PEPD / `INT33A1`) to set the `S0ID` flag to 1 at boot. The BIOS leaves
+this at 0 on desktop boards, which causes PEPD's `_DSM` function 1 to return
+an empty device constraint list, preventing the kernel's LPS0 path from
+coordinating low-power S0 idle device entry. Setting `S0ID=1` enables that
+constraint list. Build it the same way: `iasl -sa nvidia-s0ix.dsl`.
+
+### Installing the SSDT overrides
+
+The compiled `.aml` files need to be bundled into the initramfs so the kernel
+loads them at boot. The cleanest way on CachyOS (mkinitcpio):
+
+1. Copy the AML files to a persistent location:
+   ```bash
+   sudo mkdir -p /etc/acpi/override
+   sudo cp nvidia-d3.aml nvidia-s0ix.aml /etc/acpi/override/
+   ```
+
+2. Create `/etc/initcpio/install/acpi_override`:
+   ```bash
+   #!/usr/bin/env bash
+   build() {
+       local aml dest
+       for aml in /etc/acpi/override/*.aml; do
+           [[ -f "$aml" ]] || continue
+           dest="$EARLYROOT/kernel/firmware/acpi/${aml##*/}"
+           mkdir -p "${dest%/*}"
+           cp "$aml" "$dest"
+       done
+   }
+   ```
+   The hook writes to `$EARLYROOT` (not `$BUILDROOT`) so the AML lands in the
+   early uncompressed CPIO section — the kernel only scans that section for ACPI
+   overrides, not the main compressed image.
+
+3. Add `acpi_override` to the `HOOKS` array in `/etc/mkinitcpio.conf` (before
+   `filesystems`).
+
+4. Rebuild the initramfs:
+   ```bash
+   sudo mkinitcpio -P
+   ```
+
+After rebooting, verify it loaded:
+```bash
+dmesg | grep -i 'ACPI.*SSDT.*NVIDIA'
+cat /proc/driver/nvidia/gpus/*/power | grep 'Runtime D3'
+# should show: Runtime D3 status: Enabled (fine-grained)
+```
+
+**BUT** it should be noted that none of the above move the needle on power
+consumption as measured at the wall. It seems that the GPU is pretty good at
+managing its own power consumption without the above (as measured by `nvidia-smi -q -d POWER`), and it's also not enough to get the CPU package C states below C2.
+
+This change has since been backed out
+
+### Audio power management
+
+Add `snd_hda_intel.power_save=1` to the `KERNEL_CMDLINE` line in `/etc/default/limine`.
+This takes effect automatically on the next kernel update. To apply it immediately
+to existing entries, also edit the `cmdline:` lines directly in `/boot/limine.conf`.
+
+Also mask the system udev rule that overrides this on AC power (designed for
+laptops to prevent audio crackling; not relevant on a desktop with no battery):
+```bash
+sudo touch /etc/udev/rules.d/20-audio-pm.rules
+```
+
+After rebooting, verify with:
+```bash
+cat /sys/module/snd_hda_intel/parameters/power_save  # should show 1
+```
+
+**AGAIN** this seems to have negligible effect at the wall
+
+This change has since been backed out
+
+### NVMe power management
+
+The NVMe drive's `power/control` attribute defaults to `on`, so a udev rule is needed to enable autosuspend
+
+```bash
+echo 'ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x010802", ATTR{power/control}="auto"' \
+    | sudo tee /etc/udev/rules.d/99-nvme-autosuspend.rules
+```
+
+**AGAIN** this seems to have negligible effect at the wall
+
+This change has since been backed out
 
 ## Monitoring
 
