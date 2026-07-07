@@ -329,6 +329,27 @@ echo 'ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x010802", ATTR{power/contr
 
 This change has since been backed out
 
+### Ethernet EEE (Energy Efficient Ethernet)
+
+Enabling EEE on the NIC makes a measurable difference at the wall. Persist it via a NetworkManager dispatcher script so it runs whenever the interface comes up (handles reboots and suspend/resume):
+
+Create `/etc/NetworkManager/dispatcher.d/99-eee`:
+```bash
+#!/bin/bash
+IFACE="$1"
+ACTION="$2"
+
+if [[ "$IFACE" == "enp5s0" && "$ACTION" == "up" ]]; then
+    ethtool --set-eee enp5s0 eee on
+fi
+```
+
+```bash
+sudo chmod +x /etc/NetworkManager/dispatcher.d/99-eee
+```
+
+The script runs as root automatically so no `sudo` is needed inside it.
+
 ## Monitoring
 
 TBD. I've got some nice Grafana dashboards for this that I should talk about
