@@ -4,8 +4,8 @@ Snapshot all BIOS settings that differ from IFR defaults.
 
 Parses the AMI IFR (extracted from the live BIOS flash) to find every
 GUI-visible setting that has been changed from its factory default, then
-writes bios_snapshot.json. The IFR is cached in /tmp and auto-regenerated
-when missing or when --regen-ifr is passed.
+writes bios_snapshot.json. The IFR is cached in ~/ami_setup.bin (survives
+reboots) and auto-regenerated when missing or when --regen-ifr is passed.
 
 Usage (run on rabble as root):
   sudo python3 capture_bios.py             # use cached IFR
@@ -14,7 +14,7 @@ Usage (run on rabble as root):
 import os, sys, json, re, subprocess, shutil
 from datetime import date
 
-SETUP_BIN  = "/tmp/ami_setup.bin"
+SETUP_BIN  = os.path.expanduser("~/ami_setup.bin")
 IFR_FILE   = SETUP_BIN + ".0.0.en-US.uefi.ifr.txt"
 BIOS_IMAGE = "/tmp/bios_flash.bin"
 BIOS_DUMP  = BIOS_IMAGE + ".dump"
@@ -29,8 +29,14 @@ VARMAP = {
     "SaSetup":  "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
 }
 
-RC_SETTINGS = []
-RC_KEYS = set()
+RC_SETTINGS = [
+    ("Setup",   0x005E, 8, "Low Power S0 Idle Capability (S0ix master switch)"),
+    ("Setup",   0x0722, 8, "ACPI D3Cold Support (GPU RTD3 master switch)"),
+    ("SaSetup", 0x037F, 8, "PEG1 L1 Substates → L1.1+L1.2 (GPU slot)"),
+    ("SaSetup", 0x0380, 8, "PEG2 L1 Substates → L1.1+L1.2"),
+    ("SaSetup", 0x0381, 8, "PEG3 L1 Substates → L1.1+L1.2"),
+]
+RC_KEYS = {(var, offset) for var, offset, *_ in RC_SETTINGS}
 
 
 # ── IFR extraction ────────────────────────────────────────────────────────────

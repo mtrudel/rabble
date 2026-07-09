@@ -787,5 +787,41 @@
       "description": ""
     }
   ],
-  "rc_settings": []
+  "rc_settings": [
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x005E",
+      "size": 8,
+      "value": 1,
+      "description": "Low Power S0 Idle Capability (S0ix master switch)"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0722",
+      "size": 8,
+      "value": 1,
+      "description": "ACPI D3Cold Support (GPU RTD3 master switch)"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x037F",
+      "size": 8,
+      "value": 3,
+      "description": "PEG1 L1 Substates \u2192 L1.1+L1.2 (GPU slot)"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0380",
+      "size": 8,
+      "value": 3,
+      "description": "PEG2 L1 Substates \u2192 L1.1+L1.2"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0381",
+      "size": 8,
+      "value": 3,
+      "description": "PEG3 L1 Substates \u2192 L1.1+L1.2"
+    }
+  ]
 }

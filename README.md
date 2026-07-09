@@ -260,41 +260,39 @@ components on the GPU.
 
 ### Nvidia Runtime D3 (RTD3)
 
-The Nvidia driver supposedly supports runtime D3 power management, which allows
-the GPU to enter low-power states when idle. However, the fine-grained RTD3 mode
-also requires the BIOS to expose `_PR3` ACPI power resource methods on the GPU's
-PCIe device node. Rabble's motherboard doesn't provide this so the driver falls
-back to "Not supported" without intervention.
+Nvidia fine-grained RTD3 allows the GPU to enter D3cold (near-zero power) when
+idle. Three things must be in place together:
 
-The Claude-assisted fix is an ACPI SSDT override that injects the missing `_PR3`
-methods. The source is `nvidia-d3.dsl` in this repo. To rebuild the `.aml`
-binary from it:
+1. **ACPI `_PR3` power resource on PEG1** — the BIOS doesn't provide this, so an
+   SSDT override injects it. The source is `nvidia-d3.dsl` in this repo:
+   ```bash
+   # Install iasl if needed: sudo pacman -S acpica
+   iasl -sa nvidia-d3.dsl    # produces nvidia-d3.aml
+   ```
+   The DSL adds a stub `PowerResource` (PGPR) to the GPU's PCIe root port
+   (`\_SB.PC00.PEG1`) and attaches it as `_PR3` on both the root port and the GPU
+   endpoint (`\_SB.PC00.PEG1.PEGP`).
 
-```bash
-# Install iasl if needed: sudo pacman -S acpica
-iasl -sa nvidia-d3.dsl    # produces nvidia-d3.aml
-```
+2. **BIOS EFI variable tweaks** (see section below) — `ACPI D3Cold Support` and
+   `PEG L1 Substates` must be enabled for the PCIe link to reach the deep idle
+   state RTD3 depends on.
 
-The `.dsl` file adds a stub `PowerResource` (PGPR) to the GPU's PCIe root port
-(`\_SB.PC00.PEG1`) and attaches it as `_PR3` on both the root port and the GPU
-endpoint (`\_SB.PC00.PEG1.PEGP`).
+3. **Nvidia module parameter** — the driver's S0ix/RTD3 path must be armed:
+   ```bash
+   echo 'options nvidia NVreg_EnableS0ixPowerManagement=1' \
+       | sudo tee /etc/modprobe.d/nvidia-power.conf
+   sudo mkinitcpio -P
+   ```
 
-A second SSDT, `nvidia-s0ix.dsl`, patches the Intel Platform Energy Policy
-device (PEPD / `INT33A1`) to set the `S0ID` flag to 1 at boot. The BIOS leaves
-this at 0 on desktop boards, which causes PEPD's `_DSM` function 1 to return
-an empty device constraint list, preventing the kernel's LPS0 path from
-coordinating low-power S0 idle device entry. Setting `S0ID=1` enables that
-constraint list. Build it the same way: `iasl -sa nvidia-s0ix.dsl`.
+### Installing the SSDT override
 
-### Installing the SSDT overrides
+The compiled `.aml` needs to be bundled into the initramfs so the kernel loads it
+at boot:
 
-The compiled `.aml` files need to be bundled into the initramfs so the kernel
-loads them at boot. The cleanest way on CachyOS (mkinitcpio):
-
-1. Copy the AML files to a persistent location:
+1. Copy the AML to a persistent location:
    ```bash
    sudo mkdir -p /etc/acpi/override
-   sudo cp nvidia-d3.aml nvidia-s0ix.aml /etc/acpi/override/
+   sudo cp nvidia-d3.aml /etc/acpi/override/
    ```
 
 2. Create `/etc/initcpio/install/acpi_override`:
@@ -322,52 +320,25 @@ loads them at boot. The cleanest way on CachyOS (mkinitcpio):
    sudo mkinitcpio -P
    ```
 
-After rebooting, verify it loaded:
+After rebooting, verify:
 ```bash
-dmesg | grep -i 'ACPI.*SSDT.*NVIDIA'
-cat /proc/driver/nvidia/gpus/*/power | grep 'Runtime D3'
-# should show: Runtime D3 status: Enabled (fine-grained)
+sudo dmesg | grep -i 'SSDT.*NVIDIA'         # confirms AML loaded from initramfs
+cat /proc/driver/nvidia/gpus/*/power         # Runtime D3 status: Enabled (fine-grained)
+                                             # S0ix Platform Support: Supported
 ```
 
-**BUT** it should be noted that none of the above move the needle on power
-consumption as measured at the wall. It seems that the GPU is pretty good at
-managing its own power consumption without the above (as measured by `nvidia-smi -q -d POWER`), and it's also not enough to get the CPU package C states below C2.
-
-This change has since been backed out
-
-### Audio power management
-
-Add `snd_hda_intel.power_save=1` to the `KERNEL_CMDLINE` line in `/etc/default/limine`.
-This takes effect automatically on the next kernel update. To apply it immediately
-to existing entries, also edit the `cmdline:` lines directly in `/boot/limine.conf`.
-
-Also mask the system udev rule that overrides this on AC power (designed for
-laptops to prevent audio crackling; not relevant on a desktop with no battery):
+RTD3 only activates when the GPU is truly idle (no compositor VRAM above 200 MiB).
+In practice this means the display must be off and kwin must have released GPU
+resources. Check with:
 ```bash
-sudo touch /etc/udev/rules.d/20-audio-pm.rules
+cat /sys/bus/pci/devices/0000:01:00.0/power_state   # D3cold when idle
 ```
 
-After rebooting, verify with:
-```bash
-cat /sys/module/snd_hda_intel/parameters/power_save  # should show 1
-```
-
-**AGAIN** this seems to have negligible effect at the wall
-
-This change has since been backed out
-
-### NVMe power management
-
-The NVMe drive's `power/control` attribute defaults to `on`, so a udev rule is needed to enable autosuspend
-
-```bash
-echo 'ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x010802", ATTR{power/control}="auto"' \
-    | sudo tee /etc/udev/rules.d/99-nvme-autosuspend.rules
-```
-
-**AGAIN** this seems to have negligible effect at the wall
-
-This change has since been backed out
+Note: S0ix `Status` remains `Disabled` due to a persistent ASUS BIOS bug
+(`_DSM.USRG AE_ALREADY_EXISTS` on `\_SB.PC00.PEG1.PEGP`) that aborts the
+Nvidia driver's GPU-side S0ix capability check. S0ix `Platform Support` is
+`Supported` (fixed via EFI var), but the driver can't confirm GPU participation
+until ASUS fixes the DSDT. RTD3 fine-grained works independently of this.
 
 ### AURA LED Controller USB autosuspend
 
@@ -450,19 +421,24 @@ The BIOS exposes many power-relevant settings that are not visible in the standa
 ASUS GUI. These can be written directly to EFI variable files from Linux; the Intel
 Reference Code reads them at POST time on the next boot.
 
-The following RC-only settings were identified by cross-referencing the AMI IFR
-(extracted from the BIOS flash via UEFIExtract + ifrextractor-rs) with live EFI vars,
-and trialled as potential power savers:
+The following RC-only settings are written to EFI vars at each restore. They have no
+ASUS GUI equivalent and were identified by cross-referencing the AMI IFR (extracted
+from the BIOS flash via UEFIExtract + ifrextractor-rs) with live EFI vars.
+
+| Variable | Offset | Default | Set to | Description |
+|----------|--------|---------|--------|-------------|
+| Setup | 0x5E | 0 | 1 | Low Power S0 Idle Capability — hidden master switch; tells Intel RC to set the ACPI S0ID flag natively (replaces the backed-out `nvidia-s0ix.dsl` SSDT approach) |
+| Setup | 0x722 | 0 | 1 | ACPI D3Cold Support — hidden master switch; tells Intel RC to generate `_PR3` power resources in ACPI tables, enabling RTD3 for discrete GPU |
+| SaSetup | 0x37F–0x381 | 0 | 3 | PEG1–PEG3 L1 Substates → L1.1+L1.2 — required for PCIe link to enter the deep idle state that RTD3 depends on |
+
+Previously tried and backed out (caused ~1W regression with no benefit when D3Cold
+support was not enabled):
 
 | Variable | Offset | Default | Tried | Description |
 |----------|--------|---------|-------|-------------|
 | Setup | 0xCBA | 0 | 1 | Clock Power Management — gates PCIe reference clock when links idle |
 | Setup | 0xCAD | 0 | 1 | Unpopulated Links — powers down empty PCIe slots |
-| SaSetup | 0x37F–0x381 | 0 | 3 | PEG1–PEG3 L1 Substates → L1.1+L1.2 |
 | PchSetup | 0x2C1–0x2CF | 0 | 3 | PCH root ports 2–16 L1 Substates → L1.1+L1.2 |
-
-**These changes have since been backed out** — they caused a ~1W regression at the
-wall with no measurable benefit. All offsets are now at firmware defaults.
 
 Note: writing EFI variables from Linux requires removing the immutable flag temporarily
 (`chattr -i`). The restore script handles this automatically. A wrong offset could
@@ -495,8 +471,8 @@ sudo python3 capture_bios.py
 
 The capture script parses the AMI IFR extracted from the live BIOS flash, compares
 every GUI-settable question against its factory default, and records all differences.
-The IFR is cached in `/tmp` and re-extracted automatically when missing (e.g. after
-a reboot) or on demand with `--regen-ifr`.
+The IFR is cached in `~/ami_setup.bin` (survives reboots) and re-extracted
+automatically when missing or on demand with `--regen-ifr`.
 
 ## Monitoring
 
