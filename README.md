@@ -58,8 +58,6 @@ you can figure it out):
 
 * Reset factory defaults
 * Ai Tweaker
-  * 'Ai Overclock Tuner' to XMP 1
-    * Ensure memory is 6000 CL30
   * Intel Adaptive Boost Technology to Enabled
 * Advanced / Platform Misc Configuration
   * Native ASPN to Enabled
@@ -91,12 +89,12 @@ you can figure it out):
   * Chassis fan (top fan):
     * Mode to Manual
     * Step up.down to Level 2
-    * Values to 70 100 60 60 50 40 40 20
+    * Values to 70 100 60 60 50 40 40 0 (may not go to 0, try after a reboot)`
   * AIO fan (bottom & back fan):
     * Mode to Manual
     * Step up/down to Level 3
     * Pump Speed Lower Limit to 200 RPM
-    * Values to 70 60 60 40 50 20 40 0 (may not go to 0)
+    * Values to 70 60 60 40 50 20 40 0 (may not go to 0, try after a reboot)
 * Boot / Boot Configuration
   * Wait for F1 If Error to Disable
   * Setup Mode to Advanced Mode
@@ -160,6 +158,15 @@ you can figure it out):
         * `echo 'mat ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/99-local`
         * `sudo pacman -S prometheus-node-exporter`
         * `sudo systemctl enable --now prometheus-node-exporter`
+        * Enable RAPL power metrics (node_exporter runs as an unprivileged user and can't read `/sys/class/powercap/` by default):
+          ```bash
+          sudo mkdir -p /etc/systemd/system/prometheus-node-exporter.service.d
+          sudo tee /etc/systemd/system/prometheus-node-exporter.service.d/rapl.conf <<EOF
+          [Service]
+          AmbientCapabilities=cap_dac_read_search
+          EOF
+          sudo systemctl daemon-reload && sudo systemctl restart prometheus-node-exporter
+          ```
         * `sudo sensors-detect` (accept all the defaults)
         * `sudo pacman -S nvme-cli`
         * `sudo pacman -S turbostat`
@@ -206,7 +213,7 @@ low latency game mode)
 ## Power consumption
 
 In low power mode (ie: when the display is not running and the GPU is idle),
-this setup pulls around 40-45W as measured at the wall. At peak gaming it can
+this setup pulls around 30-35W as measured at the wall. At peak gaming it can
 get up to 400W or more.
 
 I don't really care too much about power usage while gaming; that's a
@@ -215,6 +222,35 @@ optimizations are around consumption when the box is idle. The theoretical
 minimum (GPU in D3cold, CPU in PC10) is probably closer to 23-24W, but achieving
 that requires a bunch of stars to align, some of which seem unsolvable. See the
 following section for the work done to date
+
+### Idle power budget
+
+Measured at ~33-34W at the wall with TV plugged in but off, ethernet connected,
+and USB devices as described below. Conditions: BIOS settings as above (notably
+RAM settings make a big difference), LTR ignore active, EEE enabled.
+
+| Component | Draw | Basis |
+|-----------|------|-------|
+| CPU core (i5-13600K idle) | 3W | RAPL (measured via turbostat on minimal
+system) |
+| CPU package (i5-13600K idle) | 0.5W | RAPL (measured via turbostat on minimal
+system) |
+| GPU (RTX 4070, deep idle) | 3.4W | nvidia-smi (measured) |
+| DDR5-4800 2×stick @ 1.1V | 3W | meaured by booting with one stick removed |
+| USB devices | 2W | measured with USB current meter |
+| Fans (3× slow: 341/559/503 RPM) | 0.5W | estimated from spec sheets |
+| NVMe SSD (P41 in APST PS4) | 0.5W | estimated from PS4 residency |
+| Ethernet (I226-V + EEE) | 1W | measured on base system |
+| Additional CPU / Core load from docker | 5W | measured compared to minimal system |
+| PSU losses (~82% @ 4.4% load of 18.9W) | 4.2W | Cybenetics RM750e report + low-load penalty |
+| **Total** | **~23W** | observed gap of 10W compared to 33W wall measurement |
+
+There is an gap of approximately 10-11W between the sum of the components
+and the observed power draw at the wall. This gap has been narrowed specifically
+to the presence of the GPU by a process of elimination. It is apparently a known
+issue with consumer RTX cards that the reported power usage in nvidia-smi only
+includes the GPU itself, and does not account for GDDR refreshing, VRMs or other
+components on the GPU.
 
 ## Power management active work
 
@@ -328,6 +364,60 @@ echo 'ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x010802", ATTR{power/contr
 **AGAIN** this seems to have negligible effect at the wall
 
 This change has since been backed out
+
+### AURA LED Controller USB autosuspend
+
+The ASUS AURA LED Controller (used for motherboard RGB) is a USB device that stays
+active by default even though we don't use it (RGB is driven by a standalone hardware
+controller instead). A udev rule suspends it automatically:
+
+```bash
+echo 'ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b05", ATTR{idProduct}=="19af", ATTR{power/control}="auto"' \
+    | sudo tee /etc/udev/rules.d/99-aura-autosuspend.rules
+```
+
+The device suspends within a few seconds of boot and stays suspended. Minor power
+saving on its own, but removes one always-active device from the USB controller's
+wakeup load.
+
+### PMC LTR ignore
+
+The Intel PMC (Platform Management Controller) uses LTR (Latency Tolerance Reporting)
+values advertised by platform devices to decide whether to allow deep package C-states.
+On this B760 desktop board, three devices report LTR values that block the platform
+from entering states below PC2 indefinitely:
+
+- Entry 0: SOUTHPORT_A (PCIe port — the NVMe drive)
+- Entry 4: XHCI (USB controller)
+- Entry 6: ME (Intel Management Engine)
+
+Ignoring these entries saves **2-3W at the wall** by allowing the platform to enter
+deeper idle states. Persist via a systemd oneshot service:
+
+Create `/etc/systemd/system/pmc-ltr-ignore.service`:
+```ini
+[Unit]
+Description=Ignore PMC LTR entries to allow deeper package C-states
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "echo 0 > /sys/kernel/debug/pmc_core/ltr_ignore"
+ExecStart=/bin/sh -c "echo 4 > /sys/kernel/debug/pmc_core/ltr_ignore"
+ExecStart=/bin/sh -c "echo 6 > /sys/kernel/debug/pmc_core/ltr_ignore"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now pmc-ltr-ignore.service
+```
+
+Note: the IRTL MSRs (which gate PC6/PC8/PC10) are read-only on this platform — the
+BIOS doesn't set them and they can't be written from the OS. PC3 flickers briefly but
+PC6+ remains unachievable on this desktop B760 board regardless.
 
 ### Ethernet EEE (Energy Efficient Ethernet)
 
