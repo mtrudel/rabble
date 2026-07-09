@@ -60,14 +60,14 @@ you can figure it out):
 * Ai Tweaker
   * Intel Adaptive Boost Technology to Enabled
 * Advanced / Platform Misc Configuration
-  * Native ASPN to Enabled
+  * Native ASPM to Enabled
   * DMI Link ASPM Control to L1
   * ASPM to L1
   * L1 Substates to L1.1 & L1.2
   * DMI ASPM to ASPM L1
   * DMI Gen3 ASPM to ASPM L1
   * PEG - ASPM to L0sL1
-* Advanced / Platform Misc Configuration / CPU - Power Maangement Control
+* Advanced / Platform Misc Configuration / CPU - Power Management Control
   * CPU C-states to Enabled
   * Package C State Limit to C10
 * Advanced / SA Configuration
@@ -78,7 +78,7 @@ you can figure it out):
   * Restore AC Power Loss to Last State
 * Advanced / Thermal Configuration
   * Intel Dynamic Tuning Technology to Enabled
-* Advanced / Onbaord Devices Configuration
+* Advanced / Onboard Devices Configuration
   * HD Audio to Disabled
   * Wifi/Bluetooth to Disabled
   * When system is in working State to Stealth Mode
@@ -95,9 +95,13 @@ you can figure it out):
     * Step up/down to Level 3
     * Pump Speed Lower Limit to 200 RPM
     * Values to 70 60 60 40 50 20 40 0 (may not go to 0, try after a reboot)
+* Advanced / Trusted Computing
+  * Security Device Support to Disable
 * Boot / Boot Configuration
   * Wait for F1 If Error to Disable
   * Setup Mode to Advanced Mode
+* Security
+  * UEFI Variable Protection / Password Protection of Runtime Variables to Disable
 
 ### Burn In / Benchmarking
 
@@ -439,6 +443,60 @@ sudo chmod +x /etc/NetworkManager/dispatcher.d/99-eee
 ```
 
 The script runs as root automatically so no `sudo` is needed inside it.
+
+### BIOS EFI variable tweaks
+
+The BIOS exposes many power-relevant settings that are not visible in the standard
+ASUS GUI. These can be written directly to EFI variable files from Linux; the Intel
+Reference Code reads them at POST time on the next boot.
+
+The following RC-only settings were identified by cross-referencing the AMI IFR
+(extracted from the BIOS flash via UEFIExtract + ifrextractor-rs) with live EFI vars,
+and trialled as potential power savers:
+
+| Variable | Offset | Default | Tried | Description |
+|----------|--------|---------|-------|-------------|
+| Setup | 0xCBA | 0 | 1 | Clock Power Management — gates PCIe reference clock when links idle |
+| Setup | 0xCAD | 0 | 1 | Unpopulated Links — powers down empty PCIe slots |
+| SaSetup | 0x37F–0x381 | 0 | 3 | PEG1–PEG3 L1 Substates → L1.1+L1.2 |
+| PchSetup | 0x2C1–0x2CF | 0 | 3 | PCH root ports 2–16 L1 Substates → L1.1+L1.2 |
+
+**These changes have since been backed out** — they caused a ~1W regression at the
+wall with no measurable benefit. All offsets are now at firmware defaults.
+
+Note: writing EFI variables from Linux requires removing the immutable flag temporarily
+(`chattr -i`). The restore script handles this automatically. A wrong offset could
+corrupt a setting (recoverable via BIOS "Load Defaults"), but does not risk bricking.
+
+### BIOS snapshot / restore
+
+`bios_snapshot.json` contains all GUI-visible settings that differ from their
+IFR factory defaults.
+
+To diff current state against the snapshot:
+
+```bash
+sudo python3 restore_bios.py
+```
+
+To restore everything after a CMOS reset or reflash:
+
+```bash
+sudo python3 restore_bios.py --apply
+# then reboot
+```
+
+To regenerate `bios_snapshot.json` after making intentional BIOS changes (run on
+rabble as root):
+
+```bash
+sudo python3 capture_bios.py
+```
+
+The capture script parses the AMI IFR extracted from the live BIOS flash, compares
+every GUI-settable question against its factory default, and records all differences.
+The IFR is cached in `/tmp` and re-extracted automatically when missing (e.g. after
+a reboot) or on demand with `--regen-ifr`.
 
 ## Monitoring
 

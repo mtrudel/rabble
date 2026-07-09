@@ -1,0 +1,791 @@
+{
+  "machine": "rabble (ASUS ROG STRIX B760-I GAMING WIFI)",
+  "captured": "2026-07-09",
+  "settings": [
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0054",
+      "size": 8,
+      "value": 1,
+      "description": "Native ASPM"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0518",
+      "size": 8,
+      "value": 2,
+      "description": "DMI Link ASPM Control"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x011C",
+      "size": 8,
+      "value": 2,
+      "description": "ASPM"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x02C0",
+      "size": 8,
+      "value": 2,
+      "description": "L1 Substates"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x00AE",
+      "size": 8,
+      "value": 2,
+      "description": "DMI ASPM"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x00AD",
+      "size": 8,
+      "value": 2,
+      "description": "DMI Gen3 ASPM"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x037B",
+      "size": 8,
+      "value": 3,
+      "description": "PEG - ASPM"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x09FD",
+      "size": 8,
+      "value": 1,
+      "description": "PEP enumerated SATA ports"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0736",
+      "size": 8,
+      "value": 0,
+      "description": "Connectivity mode (Wi-Fi & Bluetooth)"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x0002",
+      "size": 8,
+      "value": 35,
+      "description": "CPU Flex Ratio Settings"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x0015",
+      "size": 8,
+      "value": 1,
+      "description": "CPU C-states"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x004C",
+      "size": 8,
+      "value": 8,
+      "description": "Package C State Limit"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00E7",
+      "size": 8,
+      "value": 1,
+      "description": "P-core Turbo Ratio Limit Numcore0"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00E8",
+      "size": 8,
+      "value": 2,
+      "description": "P-core Turbo Ratio Limit Numcore1"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00E9",
+      "size": 8,
+      "value": 3,
+      "description": "P-core Turbo Ratio Limit Numcore2"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00EA",
+      "size": 8,
+      "value": 4,
+      "description": "P-core Turbo Ratio Limit Numcore3"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00EB",
+      "size": 8,
+      "value": 5,
+      "description": "P-core Turbo Ratio Limit Numcore4"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00EC",
+      "size": 8,
+      "value": 6,
+      "description": "P-core Turbo Ratio Limit Numcore5"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00ED",
+      "size": 8,
+      "value": 7,
+      "description": "P-core Turbo Ratio Limit Numcore6"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00EE",
+      "size": 8,
+      "value": 8,
+      "description": "P-core Turbo Ratio Limit Numcore7"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00D7",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio0"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00D8",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio1"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00D9",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio2"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00DA",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio3"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00DB",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio4"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00DC",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio5"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00DD",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio6"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00DE",
+      "size": 8,
+      "value": 51,
+      "description": "P-core Turbo Ratio Limit Ratio7"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x0107",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore0"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x0108",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore1"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x0109",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore2"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x010A",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore3"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x010B",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore4"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x010C",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore5"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x010D",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore6"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x010E",
+      "size": 8,
+      "value": 255,
+      "description": "E-core Turbo Ratio Limit Numcore7"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00F7",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio0"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00F8",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio1"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00F9",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio2"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00FA",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio3"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00FB",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio4"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00FC",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio5"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00FD",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio6"
+    },
+    {
+      "file": "CpuSetup-b08f97ff-e6e8-4193-a997-5e9e9b0adb32",
+      "offset": "0x00FE",
+      "size": 8,
+      "value": 39,
+      "description": "E-core Turbo Ratio Limit Ratio7"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0006",
+      "size": 8,
+      "value": 1,
+      "description": "Memory Reference Clock"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0007",
+      "size": 8,
+      "value": 48,
+      "description": "Memory Ratio"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0009",
+      "size": 8,
+      "value": 40,
+      "description": "tCL"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x000F",
+      "size": 8,
+      "value": 40,
+      "description": "tRCD/tRP"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x000D",
+      "size": 16,
+      "value": 77,
+      "description": "tRAS"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x000A",
+      "size": 8,
+      "value": 38,
+      "description": "tCWL"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x000B",
+      "size": 16,
+      "value": 32,
+      "description": "tFAW"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0010",
+      "size": 16,
+      "value": 4681,
+      "description": "tREFI"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0015",
+      "size": 8,
+      "value": 8,
+      "description": "tRTP"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0016",
+      "size": 8,
+      "value": 18,
+      "description": "tWR"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0017",
+      "size": 8,
+      "value": 72,
+      "description": "tWTR"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x0018",
+      "size": 8,
+      "value": 2,
+      "description": "NMode"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x00B2",
+      "size": 8,
+      "value": 1,
+      "description": "Primary Display"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BD0",
+      "size": 8,
+      "value": 1,
+      "description": "DMI Gen4 EQ Mode"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC1",
+      "size": 8,
+      "value": 0,
+      "description": "DMI Gen4 RTCO Cpre Lane1"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC9",
+      "size": 8,
+      "value": 0,
+      "description": "DMI Gen4 RTCO Cpost Lane1"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC3",
+      "size": 8,
+      "value": 10,
+      "description": "DMI Gen4 RTCO Cpre Lane3"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BCB",
+      "size": 8,
+      "value": 6,
+      "description": "DMI Gen4 RTCO Cpost Lane3"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC4",
+      "size": 8,
+      "value": 10,
+      "description": "DMI Gen4 RTCO Cpre Lane4"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BCC",
+      "size": 8,
+      "value": 6,
+      "description": "DMI Gen4 RTCO Cpost Lane4"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC5",
+      "size": 8,
+      "value": 10,
+      "description": "DMI Gen4 RTCO Cpre Lane5"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BCD",
+      "size": 8,
+      "value": 6,
+      "description": "DMI Gen4 RTCO Cpost Lane5"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC6",
+      "size": 8,
+      "value": 10,
+      "description": "DMI Gen4 RTCO Cpre Lane6"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BCE",
+      "size": 8,
+      "value": 6,
+      "description": "DMI Gen4 RTCO Cpost Lane6"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BC7",
+      "size": 8,
+      "value": 10,
+      "description": "DMI Gen4 RTCO Cpost Lane7"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BCF",
+      "size": 8,
+      "value": 6,
+      "description": "DMI Gen4 RTCO Cpre Lane7"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB0",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane0"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB8",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane0"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB1",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane1"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB9",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane1"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB2",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane2"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBA",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane2"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB3",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane3"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBB",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane3"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB4",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane4"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBC",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane4"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB5",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane5"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBD",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane5"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB6",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane6"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBE",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane6"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BB7",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpre Lane7"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0BBF",
+      "size": 8,
+      "value": 5,
+      "description": "DMI Gen3 RTCO Cpost Lane7"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0097",
+      "size": 8,
+      "value": 0,
+      "description": "Camera1"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0098",
+      "size": 8,
+      "value": 0,
+      "description": "Camera2"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0099",
+      "size": 8,
+      "value": 0,
+      "description": "Camera3"
+    },
+    {
+      "file": "SaSetup-72c5e28c-7783-43a1-8767-fad73fccafa4",
+      "offset": "0x00FA",
+      "size": 8,
+      "value": 0,
+      "description": "Enable VMD controller"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0049",
+      "size": 8,
+      "value": 0,
+      "description": "SATA Controller(s)"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0093",
+      "size": 8,
+      "value": 1,
+      "description": "Aggressive LPM Support"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x004F",
+      "size": 8,
+      "value": 0,
+      "description": "SATA6G_1(Black)"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0050",
+      "size": 8,
+      "value": 0,
+      "description": "SATA6G_2(Black)"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0051",
+      "size": 8,
+      "value": 0,
+      "description": "SATA6G_3(Black)"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0052",
+      "size": 8,
+      "value": 0,
+      "description": "SATA6G_4(Black)"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x0591",
+      "size": 8,
+      "value": 0,
+      "description": "HD Audio"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x05F3",
+      "size": 8,
+      "value": 2,
+      "description": "Connected device"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x05F4",
+      "size": 8,
+      "value": 4,
+      "description": "Connected device"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0607",
+      "size": 8,
+      "value": 1,
+      "description": "Connected device"
+    },
+    {
+      "file": "PchSetup-4570b7f1-ade8-4943-8dc3-406472842384",
+      "offset": "0x06FB",
+      "size": 8,
+      "value": 0,
+      "description": "Hardware Flow Control"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x06F3",
+      "size": 8,
+      "value": 1,
+      "description": "Intel(R) Dynamic Tuning Technology"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0883",
+      "size": 8,
+      "value": 2,
+      "description": "USBC connector manager selection"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0013",
+      "size": 8,
+      "value": 0,
+      "description": "Security Device Support"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0C8B",
+      "size": 8,
+      "value": 0,
+      "description": "Password Protection of Runtime Variables"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0CDF",
+      "size": 8,
+      "value": 2,
+      "description": "Restore AC Power Loss"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0CDE",
+      "size": 8,
+      "value": 0,
+      "description": "USB power delivery in Soft Off state (S5)"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0D31",
+      "size": 8,
+      "value": 0,
+      "description": "CPU Temperature LED Switch"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0000",
+      "size": 8,
+      "value": 1,
+      "description": "Bootup NumLock State"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0CDC",
+      "size": 8,
+      "value": 0,
+      "description": "Wait For 'F1' If Error"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0C90",
+      "size": 8,
+      "value": 0,
+      "description": "Setup Mode"
+    },
+    {
+      "file": "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "offset": "0x0C83",
+      "size": 8,
+      "value": 2,
+      "description": ""
+    }
+  ],
+  "rc_settings": []
+}
