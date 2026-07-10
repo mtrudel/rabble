@@ -197,10 +197,66 @@ you can figure it out):
 
 ### TV Tweaks
 
-This installs tools to help with turning the TV on and off when the display goes
-to sleep
+This wires up automatic TV power control: the TV turns off after 5 minutes of
+inactivity and wakes (via WoL + input switch to HDMI 2) when activity resumes.
+The TV must have **IP Control** and **Wake on LAN** enabled in its network
+settings (Quick Start+ is not required).
 
-TBD - working on this currently
+Install the tools:
+```bash
+sudo pacman -S python-pip wakeonlan swayidle
+python3 -m pip install bscpylgtv --user --break-system-packages
+```
+
+Pair with the TV (TV must be on; accept the prompt that appears on screen):
+```bash
+WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 ~/.local/bin/bscpylgtvcommand 192.168.10.172 get_system_info
+```
+
+This stores a key in `~/.local/share/bscpylgtv/` and only needs to be done once.
+
+Create `~/.local/bin/tv-off.sh`:
+```bash
+#!/bin/bash
+/home/mat/.local/bin/bscpylgtvcommand 192.168.10.172 power_off
+```
+
+Create `~/.local/bin/tv-on.sh`:
+```bash
+#!/bin/bash
+/usr/bin/wakeonlan f4:14:bf:56:99:9a
+sleep 8
+/home/mat/.local/bin/bscpylgtvcommand 192.168.10.172 set_input HDMI_2
+```
+
+```bash
+chmod +x ~/.local/bin/tv-{on,off}.sh
+```
+
+Hook them into Plasma's idle events via swayidle (which works on any Wayland
+compositor via the idle protocol). Create
+`~/.config/systemd/user/tv-screen-watch.service`:
+```ini
+[Unit]
+Description=TV power control via swayidle screen events
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/swayidle -w \
+    timeout 300 '/home/mat/.local/bin/tv-off.sh' \
+    resume '/home/mat/.local/bin/tv-on.sh'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now tv-screen-watch.service
+```
 
 # In operation
 
