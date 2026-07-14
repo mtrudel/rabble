@@ -88,8 +88,8 @@ you can figure it out):
     * Step up/down to Level 1
   * Chassis fan (top fan):
     * Mode to Manual
-    * Step up.down to Level 2
-    * Values to 70 100 60 60 50 40 40 0 (may not go to 0, try after a reboot)`
+    * Step up/down to Level 2
+    * Values to 70 100 60 60 50 40 40 0 (may not go to 0, try after a reboot)
   * AIO fan (bottom & back fan):
     * Mode to Manual
     * Step up/down to Level 3
@@ -177,7 +177,8 @@ Many of these can optionally be managed in Linux, see the [EFI Notes](efi.md) fo
     * Install docker:
         * `sudo pacman -S docker docker-compose`
         * `sudo systemctl enable --now docker`
-        * `sudo usermod -aG docker $USER` (Log out and back in to get docker permissions) * In GUI:
+        * `sudo usermod -aG docker $USER` (Log out and back in to get docker permissions)
+* In GUI:
     * Install Steam:
         * `sudo pacman -S cachyos-gaming-meta steam`
     * Power tweaks:
@@ -202,7 +203,7 @@ Many of these can optionally be managed in Linux, see the [EFI Notes](efi.md) fo
           ```
         * Enable EEE mode on the ethernet port (good for about 0.5W):
           ```bash
-          sudo tee /etc/NetworkManager/dispatcher.d/99-eee <<<EOF
+          sudo tee /etc/NetworkManager/dispatcher.d/99-eee <<EOF
           #!/bin/bash
           IFACE="$1"
           ACTION="$2"
@@ -268,7 +269,7 @@ enabled, all docker containers running:
 | CPU core (i5-13600K idle) | 3W | RAPL (measured via turbostat on minimal system) |
 | CPU package (i5-13600K idle) | 0.5W | RAPL (measured via turbostat on minimal system) |
 | GPU (RTX 4070, deep idle) | 3.4W | nvidia-smi (measured) |
-| DDR5-4800 2×stick @ 1.1V | 3W | meaured by booting with one stick removed |
+| DDR5-4800 2×stick @ 1.1V | 3W | measured by booting with one stick removed |
 | USB devices | 2W | measured with USB current meter |
 | Fans (3× slow: 341/559/503 RPM) | 0.5W | estimated from spec sheets |
 | NVMe SSD (P41 in APST PS4) | 0.5W | estimated from PS4 residency |
@@ -277,12 +278,25 @@ enabled, all docker containers running:
 | PSU losses (~82% @ 4.4% load of 18.9W) | 4.2W | Cybenetics RM750e report + low-load penalty |
 | **Total** | **~23W** | observed gap of 10W compared to 33W wall measurement |
 
-There is an gap of approximately 10-11W between the sum of the components
-and the observed power draw at the wall. This gap has been narrowed specifically
-to the presence of the GPU by a process of elimination. It is apparently a known
+There is a gap of approximately 10-11W between the sum of the components
+and the observed power draw at the wall. Approximately 6W of that is directly
+related to the GSP firmware structure of the open drivers (reverting to an
+earlier version of the proprietary driver & disabling GSP brings the idle value
+down by 6W). This is a known issue with the open drivers and is unavoidable. The
+remainder of the gap (4-5W) is unaccounted for, but seems related to the GPU
+being present. Physically removing the card reduces power consumption to a level
+that is entirely explained by the items in the above table. This is apparently an
 issue with consumer RTX cards that the reported power usage in nvidia-smi only
-includes the GPU itself, and does not account for GDDR refreshing, VRMs or other
-components on the GPU.
+includes the GPU itself, and does not account for both the increase due to GSP
+firmware use, but also GDDR refreshing, VRMs or other components on the GPU.
+
+The tl;dr here is that running the GPU on an up to date driver unavoidably
+consumes an additional 13-14W of power at idle, even though nvidia-smi is only
+reporting 3-4W of use. I've spent a LOT of effort trying to reduce this by
+having the card drop into D3Cold when idle, but since the motherboard does not
+support physically cutting the power rail to the GPU slot, this ends up
+consuming quite a bit MORE power than the current setup. See the
+[gpu.md](gpu.md) research log for more info.
 
 # Research projects
 
