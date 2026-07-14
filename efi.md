@@ -4,15 +4,18 @@ The BIOS exposes many power-relevant settings that are not visible in the standa
 ASUS GUI. These can be written directly to EFI variable files from Linux; the Intel
 Reference Code reads them at POST time on the next boot.
 
-The following RC-only settings are written to EFI vars at each restore. They have no
-ASUS GUI equivalent and were identified by cross-referencing the AMI IFR (extracted
-from the BIOS flash via UEFIExtract + ifrextractor-rs) with live EFI vars.
+No RC-only (hidden, non-GUI) EFI vars are currently set away from their IFR factory
+defaults. There were three, all exclusively in service of the RTD3 investigation
+(see gpu.md — RTD3 was conclusively a net power loss and fully backed out):
 
-| Variable | Offset | Default | Set to | Description |
-|----------|--------|---------|--------|-------------|
+| Variable | Offset | Default | Was set to | Description |
+|----------|--------|---------|------------|-------------|
 | Setup | 0x5E | 0 | 1 | Low Power S0 Idle Capability — hidden master switch; tells Intel RC to set the ACPI S0ID flag natively (replaces the backed-out `nvidia-s0ix.dsl` SSDT approach) |
 | Setup | 0x722 | 0 | 1 | ACPI D3Cold Support — hidden master switch; tells Intel RC to generate `_PR3` power resources in ACPI tables, enabling RTD3 for discrete GPU |
 | SaSetup | 0x37F–0x381 | 0 | 3 | PEG1–PEG3 L1 Substates → L1.1+L1.2 — required for PCIe link to enter the deep idle state that RTD3 depends on |
+
+All three reverted to factory default (0) once RTD3 was ruled out. `bios_snapshot.json`'s
+`rc_settings` is now empty to match.
 
 Previously tried and backed out (caused ~1W regression with no benefit when D3Cold
 support was not enabled):
