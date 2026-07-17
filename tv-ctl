@@ -1,0 +1,119 @@
+#!/bin/bash
+set -euo pipefail
+
+TV_IP="192.168.10.172"
+TV_MAC="f4:14:bf:56:99:9a"
+TV_VOLUME=25
+MANIFEST="/etc/rabble-tv/manifest.json"
+KEY_FILE="/var/lib/rabble-tv/client-key"
+VOLUME_STATE_FILE="/var/lib/rabble-tv/volume"
+WS_URL="wss://${TV_IP}:3001"
+
+register_payload() {
+    local key=""
+    [[ -f "$KEY_FILE" ]] && key=$(cat "$KEY_FILE")
+    jq -nc --arg key "$key" --slurpfile manifest "$MANIFEST" '
+        {type: "register", id: "register_0",
+         payload: {"client-key": $key, forcePairing: false,
+                    manifest: $manifest[0], pairingType: "PROMPT"}}'
+}
+
+ssap_request() {
+    local uri="$1" payload="${2:-}" id="${3:-req_0}"
+    [[ -z "$payload" ]] && payload='{}'
+    jq -nc --arg uri "$uri" --arg id "$id" --argjson payload "$payload" \
+        '{type: "request", id: $id, uri: ("ssap://" + $uri), payload: $payload}'
+}
+
+# logind broadcasts PrepareForSleep natively (outside the systemd unit graph)
+# whenever anything calls Suspend(), so NetworkManager tears the network down
+# for a real suspend and brings it back once logind sees the "suspend" finish -
+# regardless of our systemd-suspend.service override making that near-instant.
+# tv-ctl calls can land in that brief dead window, so every websocat attempt
+# gets retried through it rather than failing outright.
+retry() {
+    local fn="$1" tries=6 i out
+    for (( i=1; i<=tries; i++ )); do
+        out=$("$fn" 2>&1) || true
+        if grep -q '"type":"response"' <<< "$out"; then
+            printf '%s\n' "$out"
+            return 0
+        fi
+        sleep 2
+    done
+    printf '%s\n' "$out" >&2
+    return 1
+}
+
+# There is no reliable absolute volume API for an ARC/eARC-connected soundbar:
+# ssap://audio/setVolume only updates the TV's own internal counter without
+# actually relaying a CEC command, so it silently does nothing audible. Only
+# the relative ssap://audio/volumeUp / volumeDown calls (what the physical
+# remote's rocker sends) actually reach the amp. So we track our last known
+# level ourselves and step to the target from there.
+set_volume() {
+    local target="$1"
+    local current=0
+    [[ -f "$VOLUME_STATE_FILE" ]] && current=$(cat "$VOLUME_STATE_FILE")
+    local delta=$((target - current))
+    local dir="audio/volumeUp"
+    (( delta < 0 )) && dir="audio/volumeDown" && delta=$(( -delta ))
+    (( delta == 0 )) && return 0
+    local steps=()
+    local i
+    for (( i=1; i<=delta; i++ )); do
+        steps+=("$(ssap_request "$dir" "" "vol_$i")")
+        steps+=("__SLEEP__")
+    done
+    volume_attempt() {
+        { register_payload; sleep 1
+          for s in "${steps[@]}"; do
+              [[ "$s" == "__SLEEP__" ]] && sleep 0.12 || printf '%s\n' "$s"
+          done
+          sleep 1
+        } | timeout $(( delta / 4 + 10 )) websocat -t --insecure "$WS_URL"
+    }
+    retry volume_attempt > /dev/null
+    echo "$target" > "$VOLUME_STATE_FILE"
+}
+
+off_attempt() {
+    { register_payload; sleep 1; ssap_request "system/turnOff"; sleep 2; } \
+        | timeout 6 websocat -t --insecure "$WS_URL"
+}
+
+on_attempt() {
+    { register_payload; sleep 1; ssap_request "tv/switchInput" '{"inputId":"HDMI_2"}'; sleep 2; } \
+        | timeout 6 websocat -t --insecure "$WS_URL"
+}
+
+case "${1:-}" in
+    register)
+        rm -f "$KEY_FILE"
+        echo "Sending pairing request -- accept the prompt on the TV within 45s..."
+        out=$( { register_payload; sleep 45; } | timeout 46 websocat -t --insecure "$WS_URL" 2>&1 || true )
+        newkey=$(echo "$out" | jq -rs 'map(select(.type=="registered")) | .[-1].payload["client-key"] // empty' 2>/dev/null)
+        if [[ -n "$newkey" ]]; then
+            echo -n "$newkey" > "$KEY_FILE"
+            chmod 600 "$KEY_FILE"
+            echo "Paired. client-key saved to $KEY_FILE."
+        else
+            echo "No client-key received. Raw output:" >&2
+            echo "$out" >&2
+            exit 1
+        fi
+        ;;
+    off)
+        retry off_attempt
+        ;;
+    on)
+        wakeonlan "$TV_MAC"
+        sleep 8
+        retry on_attempt
+        set_volume "$TV_VOLUME"
+        ;;
+    *)
+        echo "Usage: $0 {on|off|register}" >&2
+        exit 1
+        ;;
+esac

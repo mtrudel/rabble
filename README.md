@@ -220,6 +220,12 @@ Many of these can optionally be managed in Linux, see the [EFI Notes](efi.md) fo
           ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b05", ATTR{idProduct}=="19af", ATTR{power/control}="auto"
           EOF
           ```
+        * Start `power-profiles-daemon` on all boots (default unit only wants `graphical.target`):
+          ```bash
+          sudo systemctl enable power-profiles-daemon
+          sudo ln -sf /usr/lib/systemd/system/power-profiles-daemon.service \
+              /etc/systemd/system/multi-user.target.wants/power-profiles-daemon.service
+          ```
 * In the GUI:
     * Log into Steam
     * In Steam settings, Interface:
@@ -249,7 +255,109 @@ up like so:
 
 ### Gaming conveniences
 
-This is currently a bit of a WiP, worked up [here](lifecycle.md)
+
+* Boot to a bare console by default instead of straight into the GUI (saves ~400MiB
+  VRAM vs. a running compositor):
+    * `sudo systemctl set-default multi-user.target`
+* Wake to the GUI when an 8BitDo controller powers on (the controllers change their USB product ID when they wake up, from `2dc8:301c` to `2dc8:310a`). Handles two cases: bringing the whole session up from a bare console, or just waking an already-running session whose screen has gone DPMS-blank from idle
+    ```bash
+    sudo tee /etc/udev/rules.d/99-8bitdo-tv.rules <<EOF
+    ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="310a", RUN+="/usr/bin/systemctl --no-block start 8bitdo-gui-wake.service"
+    EOF
+    sudo tee /etc/systemd/system/8bitdo-gui-wake.service <<EOF
+    [Unit]
+    Description=Switch to graphical session when 8BitDo controller connects
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/touch /run/switch-session-pending
+    ExecStart=/usr/bin/systemctl isolate graphical.target
+    ExecStart=-/usr/bin/runuser -u mat -- /bin/bash -c 'XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 kscreen-doctor --dpms on'
+    ExecStart=-/usr/local/bin/tv-ctl on
+    EOF
+    sudo systemctl daemon-reload && sudo udevadm control --reload-rules
+    ```
+    The controller-wake and the PowerDevil idle-triggered auto-suspend (`isolate
+    multi-user.target`, see below) can fire in opposite directions at nearly the
+    same instant. `isolate` stops *everything* not required by its destination
+    target so either one can kill the other as pure collateral. The `touch`
+    above is fast enough to complete before any kill, and
+    `session-switch-resume.service` below picks up the marker and finishes the
+    job once the race resolves.
+    ```bash
+    sudo tee /etc/systemd/system/session-switch-resume.service <<EOF
+    [Unit]
+    Description=Resume to graphical.target after a manual session switch or a lost isolate race
+    ConditionPathExists=/run/switch-session-pending
+    After=multi-user.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/bin/sh -c 'rm -f /run/switch-session-pending; systemctl isolate graphical.target'
+    ExecStart=-/usr/bin/runuser -u mat -- /bin/bash -c 'XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 kscreen-doctor --dpms on'
+    ExecStart=-/usr/local/bin/tv-ctl on
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    sudo systemctl daemon-reload && sudo systemctl enable session-switch-resume.service
+    ```
+    Screen dims after `TurnOffDisplayIdleTimeoutSec` (in `~/.config/powerdevilrc`)
+    If the screen isn't blanking on schedule, `systemctl --user restart
+    plasma-powerdevil.service` fixes it.
+* Make "Suspend" (Steam Big Picture, Plasma power menu) drop to the bare console
+  instead of actually suspending the machine, by overriding
+  `systemd-suspend.service`'s `ExecStart` (wrapped in `systemd-run --no-block` since
+  isolating directly from within the unit that's running conflicts with itself):
+    ```bash
+    sudo mkdir -p /etc/systemd/system/systemd-suspend.service.d
+    sudo tee /etc/systemd/system/systemd-suspend.service.d/99-drop-graphical-instead.conf <<EOF
+    [Service]
+    ExecStart=
+    ExecStart=/usr/bin/systemd-run --no-block --collect /usr/bin/systemctl isolate multi-user.target
+    EOF
+    sudo systemctl daemon-reload
+    ```
+* TV on/off/input/volume control via LG's SSAP protocol spoken directly with
+  [`tv-ctl`](tv-ctl) over `websocat`/`jq`/`wakeonlan` to keep this simple and
+  dependency free:
+    * `sudo pacman -S websocat jq wakeonlan`
+    * `sudo mkdir -p /etc/rabble-tv && sudo cp lgtv-manifest.json /etc/rabble-tv/manifest.json`
+      ([lgtv-manifest.json](lgtv-manifest.json) is the standard, publicly-reused LG
+      pairing manifest - the same `com.lge.test` blob bscpylgtv/lgtv2/etc. all use)
+    * `sudo install -m 755 tv-ctl /usr/local/bin/tv-ctl`
+    * `sudo mkdir -p /var/lib/rabble-tv && sudo chown mat:mat /var/lib/rabble-tv`
+    * `tv-ctl register` once (TV must be on; accept the prompt on-screen within 45s)
+      to populate `/var/lib/rabble-tv/client-key`
+    * `audio/setVolume` only updates the TV's own internal counter and does nothing
+      audible once sound is routed to an external soundbar over ARC/eARC - `tv-ctl`
+      instead tracks its own last-known level in `/var/lib/rabble-tv/volume` and
+      steps to the target via the same relative `volumeUp`/`volumeDown` calls the
+      physical remote's rocker uses
+    * every call retries for ~12s: `logind` broadcasts `PrepareForSleep` on any
+      suspend (including the fake one above) outside the systemd unit graph, so
+      NetworkManager briefly drops networking right when `tv-ctl` needs it
+* Tie the TV state to entering/leaving the GUI (rather than an idle timer) via a service
+  hung directly off `graphical.target`:
+    ```bash
+    sudo tee /etc/systemd/system/tv-gui-hook.service <<EOF
+    [Unit]
+    Description=Turn TV on/off in sync with entering/leaving the graphical session
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    TimeoutStopSec=30
+    ExecStart=/usr/local/bin/tv-ctl on
+    ExecStop=/usr/local/bin/tv-ctl off
+
+    [Install]
+    WantedBy=graphical.target
+    EOF
+    sudo systemctl daemon-reload && sudo systemctl enable --now tv-gui-hook.service
+    ```
+    (`TimeoutStopSec=30` overrides this box's unusually short 10s default stop
+    timeout, giving `tv-ctl`'s retries above room to actually finish)
 
 ### Idle power consumption
 
@@ -300,7 +408,6 @@ consuming quite a bit MORE power than the current setup. See the
 
 # Research projects
 
-* [Gaming conveniences](lifecycle.md) (mostly WiP notes to self, needs to be brought in here)
 * [GPU power saving notes](gpu.md) (mostly Claude maintained)
 * [EFI variable snapshotting](efi.md) (mostly Claude maintained)
 
