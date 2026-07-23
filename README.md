@@ -162,70 +162,12 @@ Many of these can optionally be managed in Linux, see the [EFI Notes](efi.md) fo
     * Customize basic system stuff:
         * `echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/99-local.conf`
         * `echo 'mat ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/99-local`
-        * `sudo pacman -S prometheus-node-exporter`
-        * `sudo systemctl enable --now prometheus-node-exporter`
-        * Enable RAPL power metrics (node_exporter runs as an unprivileged user and can't read `/sys/class/powercap/` by default):
-          ```bash
-          sudo mkdir -p /etc/systemd/system/prometheus-node-exporter.service.d
-          sudo tee /etc/systemd/system/prometheus-node-exporter.service.d/rapl.conf <<EOF
-          [Service]
-          AmbientCapabilities=cap_dac_read_search
-          EOF
-          sudo systemctl daemon-reload && sudo systemctl restart prometheus-node-exporter
-          ```
-        * `sudo sensors-detect` (accept all the defaults)
     * Install docker:
         * `sudo pacman -S docker docker-compose`
         * `sudo systemctl enable --now docker`
         * `sudo usermod -aG docker $USER` (Log out and back in to get docker permissions)
-* In GUI:
     * Install Steam:
         * `sudo pacman -S cachyos-gaming-meta steam`
-    * Power tweaks:
-        * Ignore latency requests for a number of devices (improves C-state residency for the CPU package, good for about 1.5W):
-          ```bash
-          sudo tee /etc/systemd/system/pmc-ltr-ignore.service <<EOF
-          [Unit]
-          Description=Ignore PMC LTR entries to allow deeper package C-states
-          After=local-fs.target
-
-          [Service]
-          Type=oneshot
-          ExecStart=/bin/sh -c "echo 0 > /sys/kernel/debug/pmc_core/ltr_ignore"
-          ExecStart=/bin/sh -c "echo 4 > /sys/kernel/debug/pmc_core/ltr_ignore"
-          ExecStart=/bin/sh -c "echo 6 > /sys/kernel/debug/pmc_core/ltr_ignore"
-          RemainAfterExit=yes
-
-          [Install]
-          WantedBy=multi-user.target
-          EOF
-          sudo systemctl enable --now pmc-ltr-ignore.service
-          ```
-        * Enable EEE mode on the ethernet port (good for about 0.5W):
-          ```bash
-          sudo tee /etc/NetworkManager/dispatcher.d/99-eee <<EOF
-          #!/bin/bash
-          IFACE="$1"
-          ACTION="$2"
-
-          if [[ "$IFACE" == "enp5s0" && "$ACTION" == "up" ]]; then
-              ethtool --set-eee enp5s0 eee on
-          fi
-          EOF
-          sudo chmod +x /etc/NetworkManager/dispatcher.d/99-eee
-          ```
-        * Auto-suspend unused USB devices (good for 0.2W):
-          ```bash
-          sudo tee /etc/udev/rules.d/99-aura-autosuspend.rules <<EOF
-          ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b05", ATTR{idProduct}=="19af", ATTR{power/control}="auto"
-          EOF
-          ```
-        * Start `power-profiles-daemon` on all boots (default unit only wants `graphical.target`):
-          ```bash
-          sudo systemctl enable power-profiles-daemon
-          sudo ln -sf /usr/lib/systemd/system/power-profiles-daemon.service \
-              /etc/systemd/system/multi-user.target.wants/power-profiles-daemon.service
-          ```
 * In the GUI:
     * Log into Steam
     * In Steam settings, Interface:
@@ -253,8 +195,7 @@ up like so:
     * 'IP Control' and 'Wake on LAN' need to be enabled on the TV for the auto
       on/off to work (discussed in 'gaming conveniences', below)
 
-### Gaming conveniences
-
+## Gaming conveniences
 
 * Boot to a bare console by default instead of straight into the GUI (saves ~400MiB
   VRAM vs. a running compositor):
@@ -359,7 +300,7 @@ up like so:
     (`TimeoutStopSec=30` overrides this box's unusually short 10s default stop
     timeout, giving `tv-ctl`'s retries above room to actually finish)
 
-### Idle power consumption
+## Idle power consumption
 
 In low power mode (ie: when the display is not running and the GPU is idle),
 this setup pulls around 33-34W as measured at the wall. At peak gaming it can
@@ -406,11 +347,73 @@ support physically cutting the power rail to the GPU slot, this ends up
 consuming quite a bit MORE power than the current setup. See the
 [gpu.md](gpu.md) research log for more info.
 
+### Power Tweaks
+
+The box has a few teaks in place to help optimize power consumption at idle:
+
+* Ignore latency requests for a number of devices (improves C-state residency for the CPU package, good for about 1.5W):
+  ```bash
+  sudo tee /etc/systemd/system/pmc-ltr-ignore.service <<EOF
+  [Unit]
+  Description=Ignore PMC LTR entries to allow deeper package C-states
+  After=local-fs.target
+
+  [Service]
+  Type=oneshot
+  ExecStart=/bin/sh -c "echo 0 > /sys/kernel/debug/pmc_core/ltr_ignore"
+  ExecStart=/bin/sh -c "echo 4 > /sys/kernel/debug/pmc_core/ltr_ignore"
+  ExecStart=/bin/sh -c "echo 6 > /sys/kernel/debug/pmc_core/ltr_ignore"
+  RemainAfterExit=yes
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  sudo systemctl enable --now pmc-ltr-ignore.service
+  ```
+* Enable EEE mode on the ethernet port (good for about 0.5W):
+  ```bash
+  sudo tee /etc/NetworkManager/dispatcher.d/99-eee <<EOF
+  #!/bin/bash
+  IFACE="$1"
+  ACTION="$2"
+
+  if [[ "$IFACE" == "enp5s0" && "$ACTION" == "up" ]]; then
+      ethtool --set-eee enp5s0 eee on
+  fi
+  EOF
+  sudo chmod +x /etc/NetworkManager/dispatcher.d/99-eee
+  ```
+* Auto-suspend unused USB devices (good for 0.2W):
+  ```bash
+  sudo tee /etc/udev/rules.d/99-aura-autosuspend.rules <<EOF
+  ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b05", ATTR{idProduct}=="19af", ATTR{power/control}="auto"
+  EOF
+  ```
+* Start `power-profiles-daemon` on all boots (default unit only wants `graphical.target`):
+  ```bash
+  sudo systemctl enable power-profiles-daemon
+  sudo ln -sf /usr/lib/systemd/system/power-profiles-daemon.service \
+      /etc/systemd/system/multi-user.target.wants/power-profiles-daemon.service
+  ```
+
+## Monitoring
+
+The box is monitored by our home Grafana stack (TBD: I've got some nice dashboards for this that I should talk about)
+
+* `sudo pacman -S prometheus-node-exporter`
+* `sudo systemctl enable --now prometheus-node-exporter`
+* Enable RAPL power metrics (node_exporter runs as an unprivileged user and can't read `/sys/class/powercap/` by default):
+  ```bash
+  sudo mkdir -p /etc/systemd/system/prometheus-node-exporter.service.d
+  sudo tee /etc/systemd/system/prometheus-node-exporter.service.d/rapl.conf <<EOF
+  [Service]
+  AmbientCapabilities=cap_dac_read_search
+  EOF
+  sudo systemctl daemon-reload && sudo systemctl restart prometheus-node-exporter
+  ```
+* `sudo sensors-detect` (accept all the defaults)
+
 # Research projects
 
 * [GPU power saving notes](gpu.md) (mostly Claude maintained)
 * [EFI variable snapshotting](efi.md) (mostly Claude maintained)
-
-## Monitoring
-
-TBD. I've got some nice Grafana dashboards for this that I should talk about
