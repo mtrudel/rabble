@@ -200,6 +200,12 @@ up like so:
 * Boot to a bare console by default instead of straight into the GUI (saves ~400MiB
   VRAM vs. a running compositor):
     * `sudo systemctl set-default multi-user.target`
+* Blank the text console after 5 minutes so it does not show the login prompt
+  forever (same timeout as the GUI screen-off). Add `consoleblank=300` to every
+  `KERNEL_CMDLINE[...]` line in `/etc/default/limine`, then run `sudo limine-update`.
+  `limine-update` does not regenerate the custom `linux-cachyos-console` entry, so
+  also add `consoleblank=300` to its `cmdline:` line in `/boot/limine.conf`. To
+  apply it without a reboot: `sudo sh -c 'TERM=linux setterm --blank 5 > /dev/tty1'`
 * Wake to the GUI when an 8BitDo controller powers on (the controllers change their USB product ID when they wake up, from `2dc8:301c` to `2dc8:310a`). Handles two cases: bringing the whole session up from a bare console, or just waking an already-running session whose screen has gone DPMS-blank from idle
     ```bash
     sudo tee /etc/udev/rules.d/99-8bitdo-tv.rules <<EOF
