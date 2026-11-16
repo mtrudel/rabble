@@ -200,12 +200,54 @@ up like so:
 * Boot to a bare console by default instead of straight into the GUI (saves ~400MiB
   VRAM vs. a running compositor):
     * `sudo systemctl set-default multi-user.target`
-* Blank the text console after 5 minutes so it does not show the login prompt
-  forever (same timeout as the GUI screen-off). Add `consoleblank=300` to every
-  `KERNEL_CMDLINE[...]` line in `/etc/default/limine`, then run `sudo limine-update`.
-  `limine-update` does not regenerate the custom `linux-cachyos-console` entry, so
-  also add `consoleblank=300` to its `cmdline:` line in `/boot/limine.conf`. To
-  apply it without a reboot: `sudo sh -c 'TERM=linux setterm --blank 5 > /dev/tty1'`
+* Turn the HDMI output off (TV sees "no signal") when the text console is idle for
+  1 minute. A key press brings the login
+  prompt back.
+    * Add `consoleblank=60` to every `KERNEL_CMDLINE[...]` line in
+      `/etc/default/limine`, then run `sudo limine-update`. `limine-update` does not
+      regenerate the custom `linux-cachyos-console` entry, so also add
+      `consoleblank=60` to its `cmdline:` line in `/boot/limine.conf`. To apply it
+      without a reboot: `sudo sh -c 'TERM=linux setterm --blank 1 > /dev/tty1'`
+    * The kernel blank alone does nothing visible here. The console is drawn by
+      `simpledrm` (because of `nvidia_drm fbdev=0`), and `simpledrm` cannot turn off
+      or clear the display, so the blank only stops the cursor. Also, the Nvidia
+      driver keeps showing the console until a DRM client does a real modeset.
+      [`console-blank-off`](console-blank-off) waits for the kernel VT blank event,
+      fills the console with black, then takes DRM master on the Nvidia card, sets a
+      black mode and disables the CRTC. It uses the lowest-clock mode (640x480): the
+      TV's preferred 4K mode needs HDMI 2.1 FRL link training, which sometimes fails
+      (`nvidia-modeset: HDMI FRL link training failed`). After that failure, KWin's
+      link training fails too and the GUI has no picture until the TV is power cycled. On unblank it closes the device and the
+      driver restores the console. It acts only when the foreground VT is in text
+      mode, so it is safe while the GUI runs. KWin needs DRM master, so a
+      `plasmalogin` drop-in stops the service before the display manager starts.
+      Do not give the service a unit dependency on getty or on the display manager
+      (`Conflicts=`, `BindsTo=`): on `isolate graphical.target`, systemd then can
+      drop the display manager start job, and the GUI does not start.
+    ```bash
+    sudo install -m 755 console-blank-off /usr/local/bin/console-blank-off
+    sudo tee /etc/systemd/system/console-blank-off.service <<EOF
+    [Unit]
+    Description=Turn the HDMI output off while the text console is blanked
+    # No dependency on getty or the display manager: those make systemd drop the display
+    # manager start job on "isolate graphical.target". plasmalogin.service.d/console-blank-off.conf
+    # stops this service before KWin starts, and isolate multi-user.target starts it again.
+
+    [Service]
+    ExecStart=/usr/local/bin/console-blank-off
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    sudo mkdir -p /etc/systemd/system/plasmalogin.service.d
+    sudo tee /etc/systemd/system/plasmalogin.service.d/console-blank-off.conf <<EOF
+    [Service]
+    # KWin needs DRM master on the Nvidia card: release it first
+    ExecStartPre=-/usr/bin/systemctl stop console-blank-off.service
+    EOF
+    sudo systemctl daemon-reload && sudo systemctl enable --now console-blank-off.service
+    ```
 * Wake to the GUI when an 8BitDo controller powers on (the controllers change their USB product ID when they wake up, from `2dc8:301c` to `2dc8:310a`). Handles two cases: bringing the whole session up from a bare console, or just waking an already-running session whose screen has gone DPMS-blank from idle
     ```bash
     sudo tee /etc/udev/rules.d/99-8bitdo-tv.rules <<EOF

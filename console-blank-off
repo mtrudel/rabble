@@ -1,0 +1,184 @@
+#!/usr/bin/python3 -I
+# Turn the HDMI output off (TV sees "no signal") while the text console is blanked.
+#
+# The text console is drawn by simpledrm (nvidia_drm fbdev=0), which cannot turn off the
+# display. The kernel blank (consoleblank=) only stops the cursor and leaves the text on
+# the screen. This daemon waits for the kernel VT blank/unblank events:
+#   blank:   fill the console framebuffer with black, then take DRM master on the Nvidia
+#            card, set a black mode and disable the CRTC, so the output goes off.
+#   unblank: close the DRM device. The Nvidia driver restores the console and fbcon has
+#            already redrawn the text.
+import ctypes, fcntl, os, signal, struct, sys
+
+CARD = "/dev/dri/card1"
+FB = "/dev/fb0"
+TTY = "/dev/tty0"
+
+KDGETMODE = 0x4B3B
+KD_TEXT = 0
+TIOCLINUX = 0x541C
+TIOCL_BLANKEDSCREEN = 15
+VT_WAITEVENT = 0x560E
+VT_EVENT_BLANK = 0x2
+VT_EVENT_UNBLANK = 0x4
+
+
+def iowr(nr, size):
+    return (3 << 30) | (size << 16) | (ord("d") << 8) | nr
+
+
+def u32s(*names):
+    return [(n, ctypes.c_uint32) for n in names]
+
+
+def u64s(*names):
+    return [(n, ctypes.c_uint64) for n in names]
+
+
+class ModeInfo(ctypes.Structure):
+    _fields_ = u32s("clock") + \
+        [(n, ctypes.c_uint16) for n in ("hdisplay", "hsync_start", "hsync_end", "htotal", "hskew",
+                                        "vdisplay", "vsync_start", "vsync_end", "vtotal", "vscan")] + \
+        u32s("vrefresh", "flags", "type") + [("name", ctypes.c_char * 32)]
+
+
+class CardRes(ctypes.Structure):
+    _fields_ = u64s("fb_id_ptr", "crtc_id_ptr", "connector_id_ptr", "encoder_id_ptr") + \
+        u32s("count_fbs", "count_crtcs", "count_connectors", "count_encoders",
+             "min_width", "max_width", "min_height", "max_height")
+
+
+class GetConnector(ctypes.Structure):
+    _fields_ = u64s("encoders_ptr", "modes_ptr", "props_ptr", "prop_values_ptr") + \
+        u32s("count_modes", "count_props", "count_encoders", "encoder_id", "connector_id",
+             "connector_type", "connector_type_id", "connection", "mm_width", "mm_height",
+             "subpixel", "pad")
+
+
+class GetEncoder(ctypes.Structure):
+    _fields_ = u32s("encoder_id", "encoder_type", "crtc_id", "possible_crtcs", "possible_clones")
+
+
+class CreateDumb(ctypes.Structure):
+    _fields_ = u32s("height", "width", "bpp", "flags", "handle", "pitch") + u64s("size")
+
+
+class FbCmd(ctypes.Structure):
+    _fields_ = u32s("fb_id", "width", "height", "pitch", "bpp", "depth", "handle")
+
+
+class Crtc(ctypes.Structure):
+    _fields_ = u64s("set_connectors_ptr") + \
+        u32s("count_connectors", "crtc_id", "fb_id", "x", "y", "gamma_size", "mode_valid") + \
+        [("mode", ModeInfo)]
+
+
+def drm_ioctl(fd, nr, s):
+    fcntl.ioctl(fd, iowr(nr, ctypes.sizeof(s)), s)
+
+
+def array(t, n):
+    a = (t * max(n, 1))()
+    return a, ctypes.addressof(a)
+
+
+def output_off():
+    """Turn off every connected output on the Nvidia card. Returns the open fd (keep it open)."""
+    fd = os.open(CARD, os.O_RDWR | os.O_CLOEXEC)
+    try:
+        fcntl.ioctl(fd, (ord("d") << 8) | 0x1E)  # DRM_IOCTL_SET_MASTER
+        res = CardRes()
+        drm_ioctl(fd, 0xA0, res)  # GETRESOURCES (counts)
+        crtcs, p_crtcs = array(ctypes.c_uint32, res.count_crtcs)
+        conns, p_conns = array(ctypes.c_uint32, res.count_connectors)
+        encs, p_encs = array(ctypes.c_uint32, res.count_encoders)
+        drm_ioctl(fd, 0xA0, CardRes(crtc_id_ptr=p_crtcs, connector_id_ptr=p_conns, encoder_id_ptr=p_encs,
+                                    count_crtcs=res.count_crtcs, count_connectors=res.count_connectors,
+                                    count_encoders=res.count_encoders))
+        used = set()
+        for cid in conns[:res.count_connectors]:
+            c = GetConnector(connector_id=cid)
+            drm_ioctl(fd, 0xA7, c)  # GETCONNECTOR (counts)
+            if c.connection != 1 or c.count_modes == 0 or c.count_encoders == 0:
+                continue
+            modes, p_modes = array(ModeInfo, c.count_modes)
+            cencs, p_cencs = array(ctypes.c_uint32, c.count_encoders)
+            drm_ioctl(fd, 0xA7, GetConnector(connector_id=cid, modes_ptr=p_modes, encoders_ptr=p_cencs,
+                                             count_modes=c.count_modes, count_encoders=c.count_encoders))
+            enc = GetEncoder(encoder_id=cencs[0])
+            drm_ioctl(fd, 0xA6, enc)  # GETENCODER
+            crtc_id = next(crtcs[i] for i in range(res.count_crtcs)
+                           if enc.possible_crtcs & (1 << i) and crtcs[i] not in used)
+            used.add(crtc_id)
+            # Use the lowest pixel clock mode. The preferred 4K mode needs HDMI 2.1 FRL link
+            # training, which can fail and then make KWin's next link training fail too.
+            mode = min(modes[:c.count_modes], key=lambda m: m.clock)
+            db = CreateDumb(height=mode.vdisplay, width=mode.hdisplay, bpp=32)
+            drm_ioctl(fd, 0xB2, db)  # CREATE_DUMB: zero-filled, so black
+            fb = FbCmd(width=mode.hdisplay, height=mode.vdisplay, pitch=db.pitch, bpp=32, depth=24,
+                       handle=db.handle)
+            drm_ioctl(fd, 0xAE, fb)  # ADDFB
+            one = (ctypes.c_uint32 * 1)(cid)
+            # The Nvidia driver keeps the console picture until a real modeset: light the
+            # head with the black buffer, then disable the CRTC.
+            drm_ioctl(fd, 0xA2, Crtc(set_connectors_ptr=ctypes.addressof(one), count_connectors=1,
+                                     crtc_id=crtc_id, fb_id=fb.fb_id, mode_valid=1, mode=mode))
+            drm_ioctl(fd, 0xA2, Crtc(crtc_id=crtc_id))
+            print("output off: connector %d crtc %d via %dx%d@%d (%d kHz)"
+                  % (cid, crtc_id, mode.hdisplay, mode.vdisplay, mode.vrefresh, mode.clock), flush=True)
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def fill_black():
+    stride = int(open("/sys/class/graphics/fb0/stride").read())
+    height = int(open("/sys/class/graphics/fb0/virtual_size").read().split(",")[1])
+    with open(FB, "wb", buffering=0) as f:
+        row = bytes(stride)
+        for _ in range(height):
+            f.write(row)
+
+
+def console_blanked(tty):
+    mode = bytearray(4)
+    fcntl.ioctl(tty, KDGETMODE, mode)
+    if struct.unpack("i", mode)[0] != KD_TEXT:
+        return False
+    return fcntl.ioctl(tty, TIOCLINUX, bytearray([TIOCL_BLANKEDSCREEN]), True) != 0
+
+
+def gui_starting():
+    """True while the display manager is active or starting: KWin needs DRM master then."""
+    import subprocess
+    r = subprocess.run(["systemctl", "is-active", "--quiet", "display-manager.service"])
+    if r.returncode == 0:
+        return True
+    r = subprocess.run(["systemctl", "show", "-P", "ActiveState", "display-manager.service"],
+                       capture_output=True, text=True)
+    return r.stdout.strip() in ("activating", "reloading")
+
+
+def main():
+    signal.signal(signal.SIGTERM, lambda *a: sys.exit(0))
+    tty = os.open(TTY, os.O_RDONLY | os.O_NOCTTY | os.O_CLOEXEC)
+    drm = None
+    while True:
+        # Act on the real state, not on the event, so a missed event cannot leave us wrong.
+        blanked = console_blanked(tty)
+        if blanked and drm is None and not gui_starting():
+            try:
+                fill_black()
+                drm = output_off()
+            except Exception as e:
+                print("blank failed: %s" % e, file=sys.stderr, flush=True)
+        elif not blanked and drm is not None:
+            os.close(drm)
+            drm = None
+            print("output on", flush=True)
+        ev = bytearray(struct.pack("7I", VT_EVENT_BLANK | VT_EVENT_UNBLANK, 0, 0, 0, 0, 0, 0))
+        fcntl.ioctl(tty, VT_WAITEVENT, ev)
+
+
+main()
